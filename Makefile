@@ -1,4 +1,4 @@
-.PHONY: stop-containers remove-containers remove-images prune-networks clean-docker-all setup-env populate-user-info
+all: stop-containers remove-containers remove-images prune-networks clean-docker-all setup-env populate-user-info
 
 # Stop all running and stopped containers
 stop-containers:
