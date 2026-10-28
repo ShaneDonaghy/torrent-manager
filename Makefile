@@ -31,10 +31,25 @@ setup-env:
 	fi
 
 populate-user-info:
-	echo "Setting PUID and PGID in .env file..."
-	sed -i "s/^PUID=.*/PUID=$(id -u)/" .env
-	sed -i "s/^PGID=.*/PGID=$(id -g)/" .env
-	echo ".env file updated with PUID and PGID."
+	@echo "Setting PUID, PGID and IP in .env file..."
+	@PUID=$$(id -u); \
+	PGID=$$(id -g); \
+	UNAME=$$(uname); \
+	if [ "$$UNAME" = "Darwin" ]; then \
+		IP=$$(ipconfig getifaddr en0 2>/dev/null || \
+			ipconfig getifaddr en1 2>/dev/null || \
+			ifconfig | awk '/inet / && $$2 != "127.0.0.1" {print $$2; exit}'); \
+	else \
+		IP=$$(hostname -I 2>/dev/null | awk '{print $$1}'); \
+		[ -n "$$IP" ] || IP=$$(ip route get 1.1.1.1 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($$i == "src") {print $$(i+1); exit}}'); \
+		[ -n "$$IP" ] || IP=$$(ifconfig 2>/dev/null | awk '/inet / && $$2 != "127.0.0.1" {print $$2; exit}'); \
+	fi; \
+	test -n "$$IP" || { echo "Could not determine local IP"; exit 1; }; \
+	grep -q '^PUID=' .env && sed -i.bak "s/^PUID=.*/PUID=$$PUID/" .env || echo "PUID=$$PUID" >> .env; \
+	grep -q '^PGID=' .env && sed -i.bak "s/^PGID=.*/PGID=$$PGID/" .env || echo "PGID=$$PGID" >> .env; \
+	grep -q '^IP='   .env && sed -i.bak "s/^IP=.*/IP=$$IP/"       .env || echo "IP=$$IP"     >> .env; \
+	rm -f .env.bak; \
+	echo ".env file updated with PUID=$$PUID PGID=$$PGID IP=$$IP."
 
 restart: down up
 
