@@ -2,17 +2,27 @@ services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
+    user: ${PUID}:${PGID}
     restart: unless-stopped
     environment:
       - TZ=Europe/Dublin
       - JELLYFIN_PublishedServerUrl=http://${IP}
     volumes:
-      - ./config/jellyfin/config:/config
-      - /mnt/torrents/completed/TV:/data/tvshows
-      - /mnt/torrents/completed/Movies:/data/movies
-      - /mnt/torrents:/mnt/torrents
+      - /media-server/jellyfin/config:/config
+      - /media-server/jellyfin/cache:/cache
+      - type: bind
+        source: /mnt/torrents/completed/Movies
+        target: /Movies
+      - type: bind
+        source: /mnt/torrents/completed/TV
+        target: /TV
+        read_only: true
     ports:
-      - 8096:8096
+      - 8096:8096/tcp
+      - 7359:7359/udp
+    # Optional - may be necessary for docker healthcheck to pass if running in host network mode
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
@@ -21,8 +31,8 @@ services:
     ports:
       - "7878:7878"
     volumes:
-      - ./config/radarr/config:/config
-      - ./data:/data
+      - /media-server/radarr/config:/config
+      - /media-server/radarr/data:/data
       - /mnt/torrents:/mnt/torrents
     environment:
       - PUID=${PUID}
@@ -35,8 +45,8 @@ services:
     ports:
       - "8989:8989"
     volumes:
-      - ./config/sonarr/config:/config
-      - ./data:/data
+      - /media-server/sonarr/config:/config
+      - /media-server/sonarr/data:/data
       - /mnt/torrents:/mnt/torrents
     environment:
       - PUID=${PUID}
@@ -51,9 +61,8 @@ services:
       - TZ=Europe/Dublin
       - AUTO_UPDATE=true
     volumes:
-      - ./config/jackett:/config
-      - ./data/indexing-jackett:/downloads
-      - /mnt/torrents:/mnt/torrents
+      - /media-server/jackett/config:/config
+      - /mnt/torrents/completed:/downloads
     ports:
       - 9117:9117
 
@@ -65,8 +74,8 @@ services:
       - PGID=${PGID}
       - TZ=Europe/Dublin
     volumes:
-      - ./config/deluge:/config
-      - ./data:/data
+      - /media-server/deluge/config:/config
+      - /media-server/deluge/data:/data
       - /mnt/torrents:/mnt/torrents
     ports:
       - 8112:8112
